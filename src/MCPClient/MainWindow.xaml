@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="MCPClient.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="MCPDesk">
+
+    <NavigationView x:Name="NavView"
+                    IsBackButtonVisible="Collapsed"
+                    IsSettingsVisible="True"
+                    PaneDisplayMode="Left"
+                    SelectionChanged="NavView_SelectionChanged">
+        
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="Chat" Tag="Chat" Icon="Message">
+                <NavigationViewItem.InfoBadge>
+                    <InfoBadge x:Name="ChatBadge" Visibility="Collapsed"/>
+                </NavigationViewItem.InfoBadge>
+            </NavigationViewItem>
+            <NavigationViewItem Content="MCP Servers" Tag="Servers" Icon="AllApps"/>
+        </NavigationView.MenuItems>
+
+        <Frame x:Name="ContentFrame"/>
+    </NavigationView>
+</Window>

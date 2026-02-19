@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "MCPClient (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "MCPClient (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

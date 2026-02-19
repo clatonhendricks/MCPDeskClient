@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="MCPClient.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="Transparent">
+
+    <ScrollViewer Padding="32">
+        <StackPanel Spacing="24" MaxWidth="800">
+            <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}"/>
+            
+            <!-- GitHub Copilot Section (always visible at top) -->
+            <StackPanel Spacing="12"
+                        Padding="20"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        CornerRadius="8"
+                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderThickness="1">
+                
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <FontIcon Glyph="&#xF0B2;" FontSize="28"/>
+                    <TextBlock Text="GitHub Copilot" 
+                               Style="{StaticResource SubtitleTextBlockStyle}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="GitHubAuthStatus" 
+                               VerticalAlignment="Center"
+                               FontSize="13"
+                               Opacity="0.7"/>
+                </StackPanel>
+                
+                <TextBlock TextWrapping="Wrap" Opacity="0.7">
+                    Use your GitHub Copilot subscription to access AI models (GPT-4o, Claude, etc.).
+                    Sign in with your GitHub account or paste a Personal Access Token.
+                </TextBlock>
+                
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button x:Name="GitHubSignInButton" 
+                            Click="GitHubSignIn_Click"
+                            Style="{StaticResource AccentButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE77B;" FontSize="16"/>
+                            <TextBlock Text="Sign in with GitHub"/>
+                        </StackPanel>
+                    </Button>
+                    
+                    <TextBlock Text="— or —" VerticalAlignment="Center" Opacity="0.5"/>
+                    
+                    <PasswordBox x:Name="GitHubPatBox" 
+                                 PlaceholderText="Paste GitHub PAT (models:read scope)"
+                                 Width="320"
+                                 PasswordChanged="GitHubPatBox_PasswordChanged"/>
+                </StackPanel>
+                
+                <ComboBox x:Name="GitHubModelComboBox"
+                          Header="Model"
+                          SelectedIndex="0"
+                          Width="300"
+                          SelectionChanged="GitHubModelComboBox_SelectionChanged">
+                    <ComboBoxItem Content="gpt-4o"/>
+                    <ComboBoxItem Content="gpt-4o-mini"/>
+                    <ComboBoxItem Content="o3-mini"/>
+                    <ComboBoxItem Content="claude-sonnet-4-20250514"/>
+                </ComboBox>
+                
+                <!-- Device Flow UI -->
+                <StackPanel x:Name="DeviceFlowPanel" Visibility="Collapsed" Spacing="8"
+                            Padding="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="6">
+                    <TextBlock Text="To complete sign-in:" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="1. Go to:" VerticalAlignment="Center"/>
+                        <HyperlinkButton x:Name="VerificationUriLink" Content="" FontSize="15"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="2. Enter code:" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="UserCodeText" FontWeight="Bold" FontSize="20" 
+                                   IsTextSelectionEnabled="True"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ProgressRing x:Name="AuthProgressRing" IsActive="True" Width="20" Height="20"/>
+                        <TextBlock Text="Waiting for authorization..." Opacity="0.7" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+                
+                <TextBlock x:Name="AuthStatusText" Visibility="Collapsed" FontWeight="SemiBold"/>
+            </StackPanel>
+            
+            <!-- LLM Providers Section -->
+            <StackPanel Spacing="16">
+                <TextBlock Text="Other LLM Providers" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                
+                <Button Content="Add Provider" Click="AddProvider_Click"/>
+                
+                <ListView x:Name="ProvidersListView" 
+                          SelectionMode="Single"
+                          SelectionChanged="ProvidersListView_SelectionChanged">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="8" ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel>
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Type}" Opacity="0.7" FontSize="12"/>
+                                </StackPanel>
+                                
+                                <ToggleSwitch Grid.Column="1" 
+                                              IsOn="{Binding Enabled, Mode=TwoWay}"
+                                              OnContent="Enabled" 
+                                              OffContent="Disabled"/>
+                                
+                                <Button Grid.Column="2" 
+                                        Content="&#xE74D;" 
+                                        FontFamily="Segoe MDL2 Assets"
+                                        Click="RemoveProvider_Click"
+                                        Tag="{Binding}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </StackPanel>
+            
+            <!-- Provider Details -->
+            <StackPanel x:Name="ProviderDetailsPanel" 
+                        Spacing="12" 
+                        Visibility="Collapsed"
+                        Padding="16"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        CornerRadius="8">
+                
+                <TextBlock Text="Provider Details" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                
+                <TextBox x:Name="ProviderIdTextBox" 
+                         Header="ID" 
+                         PlaceholderText="unique-id"/>
+                
+                <TextBox x:Name="DisplayNameTextBox" 
+                         Header="Display Name" 
+                         PlaceholderText="My Provider"/>
+                
+                <ComboBox x:Name="ProviderTypeComboBox" 
+                          Header="Type"
+                          SelectedIndex="0"
+                          SelectionChanged="ProviderTypeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="OpenAI"/>
+                    <ComboBoxItem Content="Azure OpenAI"/>
+                    <ComboBoxItem Content="Anthropic"/>
+                    <ComboBoxItem Content="Ollama"/>
+                    <ComboBoxItem Content="GitHub Copilot"/>
+                </ComboBox>
+                
+                <PasswordBox x:Name="ApiKeyPasswordBox" 
+                             Header="API Key" 
+                             PlaceholderText="sk-..."/>
+                
+                <TextBox x:Name="ModelTextBox" 
+                         Header="Model" 
+                         PlaceholderText="gpt-4"/>
+                
+                <TextBox x:Name="EndpointTextBox" 
+                         Header="Endpoint (optional)" 
+                         PlaceholderText="https://api.openai.com"/>
+            </StackPanel>
+            
+            <!-- Config File Path -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Configuration File" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                <TextBlock x:Name="ConfigPathTextBlock" 
+                           TextWrapping="Wrap" 
+                           IsTextSelectionEnabled="True"
+                           Opacity="0.7"/>
+                <Button Content="Open Config Folder" Click="OpenConfigFolder_Click"/>
+            </StackPanel>
+            
+            <!-- Save Button -->
+            <Button Content="Save Settings" 
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="SaveSettings_Click"/>
+            
+            <InfoBar x:Name="StatusInfoBar" 
+                     IsOpen="False" 
+                     Severity="Success"/>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
