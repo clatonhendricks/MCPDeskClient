@@ -69,6 +69,7 @@ public sealed partial class ChatPage : Page
         
         // Auto-connect enabled MCP servers
         var mcpService = App.Services.GetRequiredService<Core.Services.IMcpClientService>();
+        var failedServers = new System.Collections.Generic.List<string>();
         foreach (var (name, serverConfig) in config.McpServers)
         {
             if (serverConfig.Enabled && !string.IsNullOrWhiteSpace(serverConfig.Command) 
@@ -82,8 +83,31 @@ public sealed partial class ChatPage : Page
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Auto-connect failed for {name}: {ex.Message}");
+                    failedServers.Add($"{name}: {ex.Message}");
                 }
             }
+        }
+        
+        // Show connection status
+        if (failedServers.Count > 0)
+        {
+            ErrorInfoBar.Message = $"Failed to connect MCP servers:\n{string.Join("\n", failedServers)}";
+            ErrorInfoBar.IsOpen = true;
+        }
+        
+        // Show connected server count in status
+        var connectedCount = mcpService.ConnectedServers.Count;
+        var totalEnabled = 0;
+        foreach (var (_, sc) in config.McpServers) { if (sc.Enabled) totalEnabled++; }
+        if (connectedCount > 0)
+        {
+            var tools2 = await mcpService.GetAllToolsAsync();
+            McpStatusText.Text = $"🔌 {connectedCount}/{totalEnabled} MCP servers connected • {tools2.Count} tools available";
+            System.Diagnostics.Debug.WriteLine($"MCP: {connectedCount}/{totalEnabled} servers connected, {tools2.Count} tools available");
+        }
+        else
+        {
+            McpStatusText.Text = "⚠ No MCP servers connected";
         }
     }
     

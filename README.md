@@ -12,7 +12,7 @@ Every existing MCP client is either locked to one LLM (Claude Desktop) or is a c
 | Feature | MCPDesk | Claude Desktop | VS Code + Continue | Cursor |
 |---------|---------|---------------|-------------------|--------|
 | Multi-LLM provider | ✅ | ❌ Claude only | ✅ | ✅ |
-| GitHub Copilot support | ✅ | ❌ | ❌ | ❌ |
+| GitHub Copilot support | ✅ | ❌ | ✅ | ❌ |
 | Non-developer friendly | ✅ | ✅ | ❌ | ❌ |
 | Windows native (WinUI 3) | ✅ | ❌ Electron | ❌ | ❌ Electron |
 | Multi-MCP server | ✅ | ✅ | ✅ | Limited |
@@ -149,4 +149,4 @@ MCPClient/
 
 ## License
 
-MIT
+GPL-3.0

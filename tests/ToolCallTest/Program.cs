@@ -28,53 +28,106 @@ var copilotEndpoint = tokenDoc.RootElement.GetProperty("endpoints").GetProperty(
 Console.WriteLine($"Endpoint: {copilotEndpoint}");
 Console.WriteLine($"Token length: {copilotToken.Length}");
 
-// ---- Step 2: Connect to Kusto MCP ----
-Console.WriteLine("\n=== Step 2: Connecting to Kusto MCP server ===");
-McpClient? mcpClient = null;
+// ---- Step 2: Connect to MCP Servers from Config ----
+Console.WriteLine("\n=== Step 2: Connecting to MCP servers from config ===");
+var clients = new List<McpClient>();
 var tools = new List<Dictionary<string, object>>();
-var toolNames = new Dictionary<string, string>(); // apiName -> mcpName
+var toolNames = new Dictionary<string, (McpClient Client, string RealName)>(); // apiName -> (client, mcpName)
 
 try
 {
-    var transport = new StdioClientTransport(new StdioClientTransportOptions
+    var configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCPDesk", "config.json");
+    if (!File.Exists(configPath))
     {
-        Name = "kusto-mcp",
-        Command = "uvx",
-        Arguments = ["azure-kusto-mcp"],
-        EnvironmentVariables = new Dictionary<string, string?>
-        {
-            ["KUSTO_SERVICE_URI"] = "https://wdgeventstore.kusto.windows.net/"
-        }
-    });
-    mcpClient = await McpClient.CreateAsync(transport);
-    Console.WriteLine("Connected to kusto-mcp");
-
-    var mcpTools = await mcpClient.ListToolsAsync();
-    Console.WriteLine($"Found {mcpTools.Count} tools");
-    foreach (var t in mcpTools)
+        // Fallback to old path
+         configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MCPClient", "config.json");
+    }
+    
+    Console.WriteLine($"Reading config from: {configPath}");
+    if (File.Exists(configPath))
     {
-        var apiName = $"kusto-mcp__{t.Name}";
-        Console.WriteLine($"  - {apiName}: {t.Description}");
-        toolNames[apiName] = t.Name;
-        tools.Add(new Dictionary<string, object>
+        var json = await File.ReadAllTextAsync(configPath);
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.TryGetProperty("mcpServers", out var serversEl))
         {
-            ["type"] = "function",
-            ["function"] = new Dictionary<string, object>
+            foreach (var prop in serversEl.EnumerateObject())
             {
-                ["name"] = apiName,
-                ["description"] = t.Description ?? "",
-                ["parameters"] = t.JsonSchema.ValueKind != JsonValueKind.Undefined
-                    ? JsonSerializer.Deserialize<JsonElement>(t.JsonSchema.GetRawText())
-                    : JsonSerializer.Deserialize<JsonElement>("{}")
+                var name = prop.Name;
+                var serverConfig = prop.Value;
+                
+                if (serverConfig.TryGetProperty("enabled", out var enabled) && !enabled.GetBoolean())
+                {
+                    Console.WriteLine($"Skipping disabled server: {name}");
+                    continue;
+                }
+
+                Console.WriteLine($"Connecting to server: {name}...");
+                try 
+                {
+                    var cmd = serverConfig.GetProperty("command").GetString();
+                    var serverArgs = serverConfig.GetProperty("args").EnumerateArray().Select(x => x.GetString()).ToArray();
+                    var env = new Dictionary<string, string>();
+                    if (serverConfig.TryGetProperty("env", out var envEl))
+                    {
+                        foreach (var e in envEl.EnumerateObject())
+                        {
+                            env[e.Name] = e.Value.GetString() ?? "";
+                        }
+                    }
+
+                    var transport = new StdioClientTransport(new StdioClientTransportOptions
+                    {
+                        Name = name,
+                        Command = cmd,
+                        Arguments = serverArgs!,
+                        EnvironmentVariables = env!
+                    });
+                    
+                    var client = await McpClient.CreateAsync(transport);
+                    clients.Add(client);
+                    Console.WriteLine($"✅ Connected to {name}");
+
+                    var mcpTools = await client.ListToolsAsync();
+                    Console.WriteLine($"   Found {mcpTools.Count} tools");
+                    
+                    foreach (var t in mcpTools)
+                    {
+                        var apiName = $"{name}__{t.Name}";
+                        Console.WriteLine($"   - {apiName}");
+                        toolNames[apiName] = (client, t.Name);
+                        
+                        tools.Add(new Dictionary<string, object>
+                        {
+                            ["type"] = "function",
+                            ["function"] = new Dictionary<string, object>
+                            {
+                                ["name"] = apiName,
+                                ["description"] = t.Description ?? "",
+                                ["parameters"] = t.JsonSchema.ValueKind != JsonValueKind.Undefined
+                                    ? JsonSerializer.Deserialize<JsonElement>(t.JsonSchema.GetRawText())
+                                    : JsonSerializer.Deserialize<JsonElement>("{}")
+                            }
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Failed to connect to {name}: {ex.Message}");
+                }
             }
-        });
+        }
+    }
+    else
+    {
+        Console.WriteLine("Config file not found!");
     }
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"MCP connection failed: {ex.Message}");
-    Console.WriteLine("Continuing without tools...");
+    Console.WriteLine($"Config error: {ex.Message}");
 }
+
+Console.WriteLine($"\nTotal aggregated tools: {tools.Count}");
 
 // ---- Step 3: Chat loop with tool calls ----
 Console.WriteLine("\n=== Step 3: Sending chat request ===");
@@ -169,13 +222,13 @@ while (iteration < 10)
 
             // Execute tool via MCP
             string toolResult;
-            if (mcpClient != null && toolNames.TryGetValue(fnName, out var mcpToolName))
+            if (toolNames.TryGetValue(fnName, out var toolInfo))
             {
                 try
                 {
-                    Console.WriteLine($"  Executing MCP tool '{mcpToolName}'...");
+                    Console.WriteLine($"  Executing MCP tool '{toolInfo.RealName}'...");
                     var toolArgs = JsonSerializer.Deserialize<Dictionary<string, object?>>(fnArgs) ?? new();
-                    var result = await mcpClient.CallToolAsync(mcpToolName, toolArgs);
+                    var result = await toolInfo.Client.CallToolAsync(toolInfo.RealName, toolArgs);
                     toolResult = string.Join("\n", result.Content.Select(x => x.ToString()));
                     if (string.IsNullOrEmpty(toolResult)) toolResult = JsonSerializer.Serialize(result);
                     Console.WriteLine($"  Result length: {toolResult.Length}");
@@ -219,5 +272,5 @@ while (iteration < 10)
     break;
 }
 
-if (mcpClient != null) await mcpClient.DisposeAsync();
+foreach (var client in clients) await client.DisposeAsync();
 Console.WriteLine("\n=== Done ===");

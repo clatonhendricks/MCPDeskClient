@@ -58,6 +58,10 @@
 
             <!-- Provider Selector -->
             <Grid Grid.Row="0" Padding="16,8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock Text="Provider:" VerticalAlignment="Center"/>
                     <ComboBox x:Name="ProviderComboBox" 
@@ -71,6 +75,8 @@
                               SelectionChanged="ModelComboBox_SelectionChanged"/>
                     <ProgressRing x:Name="ModelLoadingRing" IsActive="False" Width="20" Height="20" Visibility="Collapsed"/>
                 </StackPanel>
+                <TextBlock x:Name="McpStatusText" Grid.Row="1" 
+                           FontSize="11" Opacity="0.6" Margin="0,4,0,0"/>
             </Grid>
 
             <!-- Messages -->
