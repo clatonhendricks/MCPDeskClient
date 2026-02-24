@@ -1,0 +1,98 @@
+name: Build & Release MCPDesk
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: src/MCPClient/MCPClient.csproj
+  SOLUTION_PATH: MCPClient.sln
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        platform: [x64, arm64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
+
+      - name: Publish
+        run: |
+          dotnet publish ${{ env.PROJECT_PATH }} `
+            --configuration Release `
+            --runtime win-${{ matrix.platform }} `
+            --self-contained true `
+            --output publish/${{ matrix.platform }}
+
+      - name: Create ZIP artifact
+        run: |
+          Compress-Archive -Path publish/${{ matrix.platform }}/* -DestinationPath MCPDesk-win-${{ matrix.platform }}.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MCPDesk-win-${{ matrix.platform }}
+          path: MCPDesk-win-${{ matrix.platform }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION="v1.0.$(date +%Y%m%d)-$(echo ${GITHUB_SHA} | cut -c1-7)"
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: MCPDesk ${{ steps.version.outputs.tag }}
+          body: |
+            ## MCPDesk Release ${{ steps.version.outputs.tag }}
+
+            Auto-built from commit ${{ github.sha }}
+
+            ### Downloads
+            - **MCPDesk-win-x64.zip** — Windows x64
+            - **MCPDesk-win-arm64.zip** — Windows ARM64
+
+            ### What's Changed
+            ${{ github.event.head_commit.message }}
+          files: |
+            artifacts/MCPDesk-win-x64/MCPDesk-win-x64.zip
+            artifacts/MCPDesk-win-arm64/MCPDesk-win-arm64.zip
+          draft: false
+          prerelease: false
