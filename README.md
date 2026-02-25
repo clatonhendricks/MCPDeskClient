@@ -1,4 +1,4 @@
-# MCPDesk
+# <img src="src/MCPClient/Assets/Square150x150Logo.scale-200.png" width="64" height="64" alt="MCPDesk icon" style="vertical-align: middle;" /> MCPDesk
 
 [![Build & Release](https://github.com/clatonhendricks/MCPDeskClient/actions/workflows/build-release.yml/badge.svg)](https://github.com/clatonhendricks/MCPDeskClient/actions/workflows/build-release.yml)
 ![WinUI 3](https://img.shields.io/badge/WinUI%203-.NET%208-blue)
