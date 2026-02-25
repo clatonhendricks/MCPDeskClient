@@ -14,8 +14,11 @@ namespace MCPClient
             // Enable Mica backdrop
             this.SystemBackdrop = new MicaBackdrop();
             
-            // Set window size
+            // Set window icon
             var appWindow = this.AppWindow;
+            appWindow.SetIcon("Assets\\MCPDesk.ico");
+            
+            // Set window size
             appWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
             
             // Navigate to Chat by default
