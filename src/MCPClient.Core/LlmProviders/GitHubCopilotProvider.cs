@@ -347,11 +347,19 @@ public class GitHubCopilotProvider : ILlmProvider
         
         if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
         {
-            var firstChoice = choices[0];
-            if (firstChoice.TryGetProperty("message", out var message))
+            // Some models (e.g. Claude) split content and tool_calls across multiple choices.
+            // Merge all choices into a single response.
+            foreach (var choice in choices.EnumerateArray())
             {
+                if (!choice.TryGetProperty("message", out var message))
+                    continue;
+                
                 if (message.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
-                    response.Content = content.GetString() ?? string.Empty;
+                {
+                    var text = content.GetString();
+                    if (!string.IsNullOrEmpty(text))
+                        response.Content = string.IsNullOrEmpty(response.Content) ? text : response.Content + "\n" + text;
+                }
                 
                 if (message.TryGetProperty("tool_calls", out var toolCalls))
                 {
