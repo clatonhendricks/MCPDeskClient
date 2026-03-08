@@ -101,7 +101,14 @@ public sealed partial class ServerConfigPage : Page
             .Where(parts => parts.Length == 2)
             .ToDictionary(parts => parts[0].Trim(), parts => parts[1].Trim());
         
-        if (!_servers.Contains(_editingServer))
+        var existingIndex = _servers.IndexOf(_editingServer);
+        if (existingIndex >= 0)
+        {
+            // Force UI refresh by removing and re-inserting at the same position
+            _servers.RemoveAt(existingIndex);
+            _servers.Insert(existingIndex, _editingServer);
+        }
+        else
         {
             _servers.Add(_editingServer);
         }
