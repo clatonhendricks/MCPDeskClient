@@ -25,7 +25,8 @@
                     <Button Content="Disconnect All" Click="DisconnectAll_Click"/>
                 </StackPanel>
                 
-                <ListView x:Name="ServersListView" SelectionMode="Single">
+                <ListView x:Name="ServersListView" SelectionMode="Single"
+                         DoubleTapped="ServersListView_DoubleTapped">
                     <ListView.ItemTemplate>
                         <DataTemplate>
                             <Grid Padding="12" ColumnSpacing="16">

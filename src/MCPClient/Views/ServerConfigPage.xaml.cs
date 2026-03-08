@@ -67,6 +67,15 @@ public sealed partial class ServerConfigPage : Page
         ShowServerForm(_editingServer);
     }
     
+    private void ServersListView_DoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+    {
+        if (ServersListView.SelectedItem is McpServerConfig server)
+        {
+            _editingServer = server;
+            ShowServerForm(server);
+        }
+    }
+    
     private void ShowServerForm(McpServerConfig server)
     {
         ServerFormPanel.Visibility = Visibility.Visible;
